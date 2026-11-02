@@ -226,10 +226,11 @@ def test_platform_budget_shared_key_max_budget_reflected_and_enforced_user_added
         contains_string(
             "Your LLM usage budget has been exceeded."
             " Please contact your administrator to increase the limit."
-            f"\nBudget has been exceeded! Key=codemie:project:{project_name}:category:platform"
+            f"\nExceededBudget: End User=codemie:project:{project_name}:category:platform:user:{user2_id}"
+            " over budget."
         ),
     )
-    assert_that(generated, contains_string(f"Max budget: {_UPDATED_MAX_BUDGET}"))
+    assert_that(generated, contains_string(f"Budget={_UPDATED_MAX_BUDGET}"))
 
 
 @pytest.mark.budget
@@ -329,7 +330,8 @@ def test_platform_budget_shared_key_max_budget_reflected_and_enforced_user_added
         contains_string(
             "Your LLM usage budget has been exceeded."
             " Please contact your administrator to increase the limit."
-            f"\nBudget has been exceeded! Key=codemie:project:{project_name}:category:platform"
+            f"\nExceededBudget: End User=codemie:project:{project_name}:category:platform:user:{user2_id}"
+            " over budget."
         ),
     )
-    assert_that(generated, contains_string(f"Max budget: {_UPDATED_MAX_BUDGET}"))
+    assert_that(generated, contains_string(f"Budget={_UPDATED_MAX_BUDGET}"))

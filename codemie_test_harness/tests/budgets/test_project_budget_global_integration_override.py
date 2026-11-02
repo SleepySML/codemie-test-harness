@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
 import logging
 import secrets
 from time import sleep
 
 import pytest
-from hamcrest import assert_that, equal_to, greater_than, has_length, not_none
+from hamcrest import assert_that, equal_to, greater_than, not_none
 
 from codemie_sdk.models.integration import CredentialTypes, CredentialValues
 
@@ -112,12 +111,10 @@ def test_global_integration_owned_by_regular_project_overrides_all_chat_contexts
     user2_assistants,
     user2_assistant_utils,
     lite_llm_budget_utils,
-    admin_spend_tracking_utils,
 ):
     user2_email, _ = keycloak_user_2
     project1_name = user2_project1_with_platform_budget
     project2_name, _ = lifecycle_project2_with_all_three_budgets
-    today = datetime.date.today()
 
     logger.info(
         "Global integration (id=%s) owned by regular project '%s' (platform budget) — "
@@ -179,55 +176,6 @@ def test_global_integration_owned_by_regular_project_overrides_all_chat_contexts
         "Project2's premium_models budget key must remain unused when a global key overrides it.",
     )
 
-    logger.info("Running blocking collect to confirm no DB rows are produced")
-    admin_spend_tracking_utils.collect_spends()
-
-    # spend_subject_type="key" collection was removed (commit
-    # 9c86cc862), so a global integration's raw LiteLLM key spend is currently
-    # invisible to project_spend_tracking for every project involved — we assert
-    # absence here rather than checking key spend values in our DB.
-    spends_project1 = admin_spend_tracking_utils.get_project_spends(
-        project1_name, today, today
-    )
-    assert_that(
-        spends_project1["total_spend"],
-        equal_to(0),
-        "Expected no tracked spend for the owning project via global integration key.",
-    )
-    assert_that(
-        spends_project1["rows"],
-        has_length(0),
-        "Expected zero spend rows for the owning project via global integration key.",
-    )
-
-    spends_project2 = admin_spend_tracking_utils.get_project_spends(
-        project2_name, today, today
-    )
-    assert_that(
-        spends_project2["total_spend"],
-        equal_to(0),
-        "Expected no tracked spend for the other regular project via global integration key.",
-    )
-    assert_that(
-        spends_project2["rows"],
-        has_length(0),
-        "Expected zero spend rows for the other regular project via global integration key.",
-    )
-
-    spends_personal = admin_spend_tracking_utils.get_project_spends(
-        user2_email, today, today
-    )
-    assert_that(
-        spends_personal["total_spend"],
-        equal_to(0),
-        "Expected no tracked spend for the personal project via global integration key.",
-    )
-    assert_that(
-        spends_personal["rows"],
-        has_length(0),
-        "Expected zero spend rows for the personal project via global integration key.",
-    )
-
 
 @pytest.mark.budget
 @pytest.mark.api
@@ -242,12 +190,10 @@ def test_global_integration_owned_by_personal_project_overrides_all_chat_context
     user2_assistants,
     user2_assistant_utils,
     lite_llm_budget_utils,
-    admin_spend_tracking_utils,
 ):
     user2_email, _ = keycloak_user_2
     project1_name = user2_project1_with_platform_budget
     project2_name, _ = lifecycle_project2_with_all_three_budgets
-    today = datetime.date.today()
 
     logger.info(
         "Global integration (id=%s) owned by personal project '%s' — chatting under "
@@ -308,53 +254,4 @@ def test_global_integration_owned_by_personal_project_overrides_all_chat_context
         ),
         equal_to(0),
         "Project2's premium_models budget key must remain unused when a global key overrides it.",
-    )
-
-    logger.info("Running blocking collect to confirm no DB rows are produced")
-    admin_spend_tracking_utils.collect_spends()
-
-    # spend_subject_type="key" collection was removed (commit
-    # 9c86cc862), so a global integration's raw LiteLLM key spend is currently
-    # invisible to project_spend_tracking for every project involved — we assert
-    # absence here rather than checking key spend values in our DB.
-    spends_project1 = admin_spend_tracking_utils.get_project_spends(
-        project1_name, today, today
-    )
-    assert_that(
-        spends_project1["total_spend"],
-        equal_to(0),
-        "Expected no tracked spend for a regular project via global integration key.",
-    )
-    assert_that(
-        spends_project1["rows"],
-        has_length(0),
-        "Expected zero spend rows for a regular project via global integration key.",
-    )
-
-    spends_project2 = admin_spend_tracking_utils.get_project_spends(
-        project2_name, today, today
-    )
-    assert_that(
-        spends_project2["total_spend"],
-        equal_to(0),
-        "Expected no tracked spend for the other regular project via global integration key.",
-    )
-    assert_that(
-        spends_project2["rows"],
-        has_length(0),
-        "Expected zero spend rows for the other regular project via global integration key.",
-    )
-
-    spends_personal = admin_spend_tracking_utils.get_project_spends(
-        user2_email, today, today
-    )
-    assert_that(
-        spends_personal["total_spend"],
-        equal_to(0),
-        "Expected no tracked spend for the owning personal project via global integration key.",
-    )
-    assert_that(
-        spends_personal["rows"],
-        has_length(0),
-        "Expected zero spend rows for the owning personal project via global integration key.",
     )

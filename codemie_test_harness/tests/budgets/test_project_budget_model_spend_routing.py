@@ -30,7 +30,6 @@ controls rather than something derivable from ``ModelTypes``:
     models and routes through the ``premium_models`` budget category.
 """
 
-import datetime
 import logging
 from time import sleep
 
@@ -87,7 +86,7 @@ def _assert_model_routes_spending_to_project_budget(
     user_assistant_utils,
     project_budget_groups,
     lite_llm_budget_utils,
-    admin_spend_tracking_utils,
+    admin_project_utils,
 ):
     alias = project_key_alias(project_name, budget_category)
 
@@ -132,16 +131,23 @@ def _assert_model_routes_spending_to_project_budget(
         assert_that(project_key_info, not_none())
         assert_that(float(project_key_info["spend"]), greater_than(0))
 
-        logger.info("Triggering spend collection")
-        admin_spend_tracking_utils.collect_spends_nowait()
-        today = datetime.date.today()
-        spends = admin_spend_tracking_utils.wait_for_project_spends(
-            project_name, today, today, budget_category
+        logger.info(
+            "Waiting for %s budget spend in ledger (project=%s)",
+            budget_category,
+            project_name,
+        )
+        budget = admin_project_utils.wait_for_project_budget_spending_above(
+            project_name, budget_category, float(project_key_info["spend"]) - 0.0001
         )
         assert_that(
-            spends["total_spend"],
+            budget,
+            not_none(),
+            f"Project {budget_category} budget not found in spend ledger",
+        )
+        assert_that(
+            budget.current_spending,
             close_to(float(project_key_info["spend"]), 0.0001),
-            f"project_spend_tracking total_spend should match project {budget_category} key spend.",
+            f"Project {budget_category} budget current_spending should match project {budget_category} key spend.",
         )
     finally:
         user_assistant_utils.delete_assistant(assistant)
@@ -159,7 +165,7 @@ def test_model_platform_budget_routes_spending_from_personal(
     lite_llm_budget_utils,
     project_setup,
     project_budget_groups,
-    admin_spend_tracking_utils,
+    admin_project_utils,
     model_type,
 ):
     if _is_premium(llm_utils, model_type):
@@ -177,7 +183,7 @@ def test_model_platform_budget_routes_spending_from_personal(
         user_assistant_utils=user_assistant_utils,
         project_budget_groups=project_budget_groups,
         lite_llm_budget_utils=lite_llm_budget_utils,
-        admin_spend_tracking_utils=admin_spend_tracking_utils,
+        admin_project_utils=admin_project_utils,
     )
 
 
@@ -193,7 +199,7 @@ def test_premium_model_budget_routes_spending_from_personal(
     lite_llm_budget_utils,
     project_setup,
     project_budget_groups,
-    admin_spend_tracking_utils,
+    admin_project_utils,
     model_type,
 ):
     if not _is_premium(llm_utils, model_type):
@@ -212,5 +218,5 @@ def test_premium_model_budget_routes_spending_from_personal(
         user_assistant_utils=user_assistant_utils,
         project_budget_groups=project_budget_groups,
         lite_llm_budget_utils=lite_llm_budget_utils,
-        admin_spend_tracking_utils=admin_spend_tracking_utils,
+        admin_project_utils=admin_project_utils,
     )

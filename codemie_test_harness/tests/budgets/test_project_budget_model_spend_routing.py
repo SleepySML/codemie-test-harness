@@ -34,7 +34,15 @@ import logging
 from time import sleep
 
 import pytest
-from hamcrest import assert_that, close_to, greater_than, has_item, none, not_none
+from hamcrest import (
+    assert_that,
+    close_to,
+    equal_to,
+    greater_than,
+    has_item,
+    none,
+    not_none,
+)
 
 from codemie_test_harness.tests.test_data.budget_test_data import (
     budget_chat_prompt,
@@ -45,25 +53,49 @@ from codemie_test_harness.tests.test_data.budget_test_data import (
     project_key_alias,
 )
 from codemie_test_harness.tests.test_data.llm_test_data import MODEL_RESPONSES
+from codemie_test_harness.tests.utils.client_factory import get_client
 from codemie_test_harness.tests.utils.env_resolver import get_environment
 
 logger = logging.getLogger(__name__)
 
 
+_PREMIUM_TEST = "test_premium_model_budget_routes_spending_from_personal"
+
+
+def _premium_flags() -> dict:
+    """Premium flag of every model the backend lists, read once while pytest collects."""
+    return {row.base_name: row.is_premium for row in get_client().llms.list()}
+
+
 def pytest_generate_tests(metafunc):
-    if "model_type" in metafunc.fixturenames:
-        env = get_environment()
-        test_data = [
-            pytest.param(
-                model_data.model_type,
-                marks=pytest.mark.skipif(
-                    env not in model_data.environments,
-                    reason=f"Skip on non {'/'.join(str(e) for e in model_data.environments)} envs",
-                ),
-            )
-            for model_data in MODEL_RESPONSES
+    """Give each test only the models it covers, so no case is skipped for being the other kind.
+
+    Premium status is a billing-tier attribute the backend owns, so it is read from the backend.
+    A model the backend does not list goes to the platform test, which reports it as missing.
+    """
+    if "model_type" not in metafunc.fixturenames:
+        return
+    env = get_environment()
+    models = list(MODEL_RESPONSES)
+    if any(env in model_data.environments for model_data in models):
+        premium = _premium_flags()
+        wants_premium = metafunc.function.__name__ == _PREMIUM_TEST
+        models = [
+            model_data
+            for model_data in models
+            if bool(premium.get(model_data.model_type, False)) == wants_premium
         ]
-        metafunc.parametrize("model_type", test_data)
+    test_data = [
+        pytest.param(
+            model_data.model_type,
+            marks=pytest.mark.skipif(
+                env not in model_data.environments,
+                reason=f"Skip on non {'/'.join(str(e) for e in model_data.environments)} envs",
+            ),
+        )
+        for model_data in models
+    ]
+    metafunc.parametrize("model_type", test_data)
 
 
 def _is_premium(llm_utils, model_type) -> bool:
@@ -168,10 +200,11 @@ def test_model_platform_budget_routes_spending_from_personal(
     admin_project_utils,
     model_type,
 ):
-    if _is_premium(llm_utils, model_type):
-        pytest.skip(
-            f"{model_type} is a premium model — covered by the premium budget test"
-        )
+    assert_that(
+        _is_premium(llm_utils, model_type),
+        equal_to(False),
+        f"{model_type} is a premium model — it belongs to the premium budget test",
+    )
 
     email, _ = keycloak_user
     _assert_model_routes_spending_to_project_budget(
@@ -202,10 +235,11 @@ def test_premium_model_budget_routes_spending_from_personal(
     admin_project_utils,
     model_type,
 ):
-    if not _is_premium(llm_utils, model_type):
-        pytest.skip(
-            f"{model_type} is not a premium model — covered by the platform budget test"
-        )
+    assert_that(
+        _is_premium(llm_utils, model_type),
+        equal_to(True),
+        f"{model_type} is not a premium model — it belongs to the platform budget test",
+    )
 
     email, _ = keycloak_user
     premium_customer_id = f"{email}_{DEFAULT_PREMIUM_BUDGET_ID}"

@@ -21,8 +21,6 @@ from datetime import datetime
 from typing import Callable, List, Optional
 from uuid import UUID
 
-from requests.exceptions import HTTPError
-
 from codemie_sdk.models.integration import IntegrationType
 from codemie_sdk.models.user import UserBudgetAssignmentInfo
 from codemie_sdk.models.project import (
@@ -161,39 +159,10 @@ class ProjectUtils(BaseUtils):
             page += 1
         return all_projects
 
-    def wait_for_project_budget_spending(
-        self,
-        project_name: str,
-        budget_category: str,
-        timeout: int = 600,
+    def _project_category_budget(
+        self, project_name: str, budget_category: str
     ) -> Optional[ProjectBudgetItem]:
-        """Poll until the given budget category has non-null current_spending."""
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            try:
-                projects = self.list_projects(
-                    include_budgets=True, search=project_name, per_page=10
-                )
-            except HTTPError as e:
-                if e.response is not None and e.response.status_code == 504:
-                    logger.warning("504 Gateway Timeout from list_projects — retrying")
-                    time.sleep(_BUDGET_SPENDING_POLL_INTERVAL)
-                    continue
-                raise
-            if projects.data:
-                budget = next(
-                    (
-                        b
-                        for b in projects.data[0].budgets
-                        if b.budget_category == budget_category
-                        and b.current_spending is not None
-                        and b.current_spending > 0
-                    ),
-                    None,
-                )
-                if budget is not None:
-                    return budget
-            time.sleep(_BUDGET_SPENDING_POLL_INTERVAL)
+        """The project's budget of the given category that has a spending figure, if any."""
         projects = self.list_projects(
             include_budgets=True, search=project_name, per_page=10
         )
@@ -205,9 +174,19 @@ class ProjectUtils(BaseUtils):
                 for b in projects.data[0].budgets
                 if b.budget_category == budget_category
                 and b.current_spending is not None
-                and b.current_spending > 0
             ),
             None,
+        )
+
+    def wait_for_project_budget_spending(
+        self,
+        project_name: str,
+        budget_category: str,
+        timeout: int = 600,
+    ) -> Optional[ProjectBudgetItem]:
+        """Poll until the given budget category has non-zero current_spending."""
+        return self.wait_for_project_budget_spending_above(
+            project_name, budget_category, 0.0, timeout
         )
 
     def wait_for_project_budget_spending_above(
@@ -223,32 +202,18 @@ class ProjectUtils(BaseUtils):
         spend already exists (e.g. from an earlier phase in the same test) —
         otherwise the poll can return immediately on the stale baseline value
         before the ledger catches up to the new spend.
+
+        On timeout it returns the latest budget it saw (None if there was none),
+        so the caller's assertion shows the real figure.
         """
         deadline = time.monotonic() + timeout
+        latest: Optional[ProjectBudgetItem] = None
         while time.monotonic() < deadline:
-            try:
-                projects = self.list_projects(
-                    include_budgets=True, search=project_name, per_page=10
-                )
-            except HTTPError as e:
-                if e.response is not None and e.response.status_code == 504:
-                    logger.warning("504 Gateway Timeout from list_projects — retrying")
-                    time.sleep(_BUDGET_SPENDING_POLL_INTERVAL)
-                    continue
-                raise
-            if projects.data:
-                budget = next(
-                    (
-                        b
-                        for b in projects.data[0].budgets
-                        if b.budget_category == budget_category
-                        and b.current_spending is not None
-                        and b.current_spending > threshold
-                    ),
-                    None,
-                )
-                if budget is not None:
+            budget = self._project_category_budget(project_name, budget_category)
+            if budget is not None:
+                if budget.current_spending > threshold:
                     return budget
+                latest = budget
             time.sleep(_BUDGET_SPENDING_POLL_INTERVAL)
         logger.warning(
             "Ledger spending for %s/%s did not exceed %.6f within %ss — "
@@ -258,61 +223,26 @@ class ProjectUtils(BaseUtils):
             threshold,
             timeout,
         )
-        projects = self.list_projects(
-            include_budgets=True, search=project_name, per_page=10
-        )
-        if not projects.data:
-            return None
-        return next(
-            (
-                b
-                for b in projects.data[0].budgets
-                if b.budget_category == budget_category
-                and b.current_spending is not None
-            ),
-            None,
-        )
+        return latest
 
-    def wait_for_member_budget_spending(
-        self,
-        budget_id: str,
-        category: str,
-        user_id: Optional[str] = None,
-        timeout: int = 600,
-    ) -> Optional[UserBudgetAssignmentInfo]:
-        """Poll GET /v1/admin/users filtered to budget_id until a matching
-        assignment's current_spending is non-null.  If user_id is given, match
-        that user specifically (personal-budget case); otherwise return the first
-        match found.
+    def _users_holding_budget(self, budget_id: str, user_id: Optional[str]):
+        """Users to inspect for a budget assignment.
+
+        A default budget is held by hundreds of users, so paging the budget filter
+        can miss the user; look the user up by e-mail instead. A custom budget has
+        a single holder, so the budget filter is enough.
         """
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            try:
-                response = self.client.users.list_admin_users(
-                    filters=json.dumps({"budgets": [budget_id]}),
-                    per_page=100,
-                )
-            except HTTPError as e:
-                if e.response is not None and e.response.status_code == 504:
-                    logger.warning(
-                        "504 Gateway Timeout from list_admin_users — retrying"
-                    )
-                    time.sleep(_BUDGET_SPENDING_POLL_INTERVAL)
-                    continue
-                raise
-            for user in response.data:
-                if user_id is not None and user.id != user_id:
-                    continue
-                for assignment in user.budget_assignments:
-                    if (
-                        assignment.budget_id == budget_id
-                        and assignment.category == category
-                        and assignment.current_spending is not None
-                        and assignment.current_spending > 0
-                    ):
-                        return assignment
-            time.sleep(_BUDGET_SPENDING_POLL_INTERVAL)
-        return None
+        if user_id is None:
+            return self.client.users.list_admin_users(
+                filters=json.dumps({"budgets": [budget_id]}), per_page=100
+            ).data
+        cache = self.__dict__.setdefault("_user_email_cache", {})
+        if user_id not in cache:
+            cache[user_id] = self.client.users.get_admin_user(user_id).email
+        response = self.client.users.list_admin_users(
+            search=cache[user_id], per_page=10
+        )
+        return [user for user in response.data if user.id == user_id]
 
     def wait_for_member_budget_spending_above(
         self,
@@ -322,34 +252,30 @@ class ProjectUtils(BaseUtils):
         user_id: Optional[str] = None,
         timeout: int = 600,
     ) -> Optional[UserBudgetAssignmentInfo]:
-        """Poll GET /v1/admin/users filtered to budget_id until a matching
-        assignment's current_spending exceeds threshold.
+        """Poll until the user's assignment of the given budget and category has a
+        current_spending above threshold.
 
-        Use this instead of wait_for_member_budget_spending when a baseline
-        spend already exists (e.g. from an earlier phase in the same test) —
-        otherwise the poll can return immediately on the stale baseline value
-        before the ledger catches up to the new spend.
+        Pass the spend the test expects as the threshold (minus its tolerance), so the
+        poll does not return on a stale or partial figure before the ledger catches up.
+        With a user_id the user is looked up directly; without one, the budget's first
+        page of holders is searched. On timeout it returns the latest assignment seen
+        (None if there was none), so the caller's assertion shows the real figure.
         """
         deadline = time.monotonic() + timeout
         latest: Optional[UserBudgetAssignmentInfo] = None
+        seen: List[str] = []
         while time.monotonic() < deadline:
-            try:
-                response = self.client.users.list_admin_users(
-                    filters=json.dumps({"budgets": [budget_id]}),
-                    per_page=100,
-                )
-            except HTTPError as e:
-                if e.response is not None and e.response.status_code == 504:
-                    logger.warning(
-                        "504 Gateway Timeout from list_admin_users — retrying"
-                    )
-                    time.sleep(_BUDGET_SPENDING_POLL_INTERVAL)
-                    continue
-                raise
-            for user in response.data:
+            users = self._users_holding_budget(budget_id, user_id)
+            seen = []
+            for user in users:
                 if user_id is not None and user.id != user_id:
                     continue
                 for assignment in user.budget_assignments:
+                    seen.append(
+                        f"{assignment.category}:{assignment.budget_id} "
+                        f"spend={assignment.current_spending} "
+                        f"unavailable={assignment.spend_unavailable}"
+                    )
                     if (
                         assignment.budget_id == budget_id
                         and assignment.category == category
@@ -361,11 +287,13 @@ class ProjectUtils(BaseUtils):
             time.sleep(_BUDGET_SPENDING_POLL_INTERVAL)
         logger.warning(
             "Ledger spending for budget %s/%s did not exceed %.6f within %ss — "
-            "returning latest observed value",
+            "returning latest observed value; user %s holds: %s",
             budget_id,
             category,
             threshold,
             timeout,
+            user_id,
+            seen or "no budget assignments",
         )
         return latest
 
@@ -691,10 +619,10 @@ class ProjectUtils(BaseUtils):
         Integrations are intentionally NOT removed first — DELETE
         /v1/projects/{name} does not block on them.
         """
-        # self.remove_extra_project_members(project_name)
-        # self.delete_project_budgets(project_name)
-        # self.delete_project_scoped_entities(project_name)
-        # self.delete_project(project_name)
+        self.remove_extra_project_members(project_name)
+        self.delete_project_budgets(project_name)
+        self.delete_project_scoped_entities(project_name)
+        self.delete_project(project_name)
         pass
 
     def delete_matching_projects(

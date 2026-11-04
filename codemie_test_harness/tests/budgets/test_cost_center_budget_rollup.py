@@ -221,9 +221,9 @@ def test_rollup_of_cost_center_without_linked_projects_returns_zero_totals(
 
     summary = cost_center_utils.get_budget_rollup(cc_id)
 
-    assert_that(summary.current_spending, equal_to(0.0))
+    assert_that(summary.current_spending, is_(none()))
     assert_that(summary.budget_limit, is_(none()))
-    assert_that(summary.total_percent, equal_to(0.0))
+    assert_that(summary.total_percent, is_(none()))
     assert_that(summary.budgets, is_(empty()))
 
 

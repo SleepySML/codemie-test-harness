@@ -86,6 +86,8 @@ def two_user_project_with_platform_budget(
 @pytest.mark.timeout(1000)
 def test_platform_spending_reflected_in_project_list_budgets(
     keycloak_user,
+    user_id,
+    admin_budget_usage_utils,
     user_assistant,
     user_assistant_utils,
     admin_project_utils,
@@ -120,6 +122,23 @@ def test_platform_spending_reflected_in_project_list_budgets(
         "Platform budget current_spending should match LiteLLM key spend.",
     )
 
+    logger.info(
+        "Waiting for the member's platform spend in the project (user=%s)", user_id
+    )
+    member_spend = admin_budget_usage_utils.wait_for_members_project_spending_above(
+        [user_id], project_name, "platform", key_spend - 0.0001
+    )
+    assert_that(
+        member_spend,
+        not_none(),
+        "Member platform spend row not found in the budget usage.",
+    )
+    assert_that(
+        member_spend,
+        close_to(key_spend, 0.0001),
+        "Member platform spend in the project should match LiteLLM platform key spend.",
+    )
+
 
 @pytest.mark.budget
 @pytest.mark.api
@@ -127,6 +146,8 @@ def test_platform_spending_reflected_in_project_list_budgets(
 @pytest.mark.timeout(1000)
 def test_cli_spending_reflected_in_project_list_budgets(
     keycloak_user,
+    user_id,
+    admin_budget_usage_utils,
     default_llm,
     user_proxy_utils,
     admin_project_utils,
@@ -165,6 +186,19 @@ def test_cli_spending_reflected_in_project_list_budgets(
         "CLI budget current_spending should match LiteLLM key spend.",
     )
 
+    logger.info("Waiting for the member's CLI spend in the project (user=%s)", user_id)
+    member_spend = admin_budget_usage_utils.wait_for_members_project_spending_above(
+        [user_id], project_name, "cli", key_spend - 0.0001
+    )
+    assert_that(
+        member_spend, not_none(), "Member CLI spend row not found in the budget usage."
+    )
+    assert_that(
+        member_spend,
+        close_to(key_spend, 0.0001),
+        "Member CLI spend in the project should match LiteLLM CLI key spend.",
+    )
+
 
 @pytest.mark.budget
 @pytest.mark.api
@@ -172,6 +206,8 @@ def test_cli_spending_reflected_in_project_list_budgets(
 @pytest.mark.timeout(1000)
 def test_premium_spending_reflected_in_project_list_budgets(
     keycloak_user,
+    user_id,
+    admin_budget_usage_utils,
     user_proxy_utils,
     admin_project_utils,
     lite_llm_budget_utils,
@@ -216,6 +252,24 @@ def test_premium_spending_reflected_in_project_list_budgets(
         "Premium budget current_spending should match LiteLLM key spend.",
     )
 
+    logger.info(
+        "Waiting for the member's premium_models spend in the project (user=%s)",
+        user_id,
+    )
+    member_spend = admin_budget_usage_utils.wait_for_members_project_spending_above(
+        [user_id], project_name, "premium_models", key_spend - 0.0001
+    )
+    assert_that(
+        member_spend,
+        not_none(),
+        "Member premium_models spend row not found in the budget usage.",
+    )
+    assert_that(
+        member_spend,
+        close_to(key_spend, 0.0001),
+        "Member premium_models spend in the project should match LiteLLM premium_models key spend.",
+    )
+
 
 @pytest.mark.budget
 @pytest.mark.api
@@ -223,6 +277,7 @@ def test_premium_spending_reflected_in_project_list_budgets(
 @pytest.mark.timeout(1000)
 def test_two_user_platform_spending_sums_in_project_list_budgets(
     keycloak_user_1,
+    admin_budget_usage_utils,
     keycloak_user_2,
     user1_assistant,
     user2_assistant,
@@ -288,4 +343,19 @@ def test_two_user_platform_spending_sums_in_project_list_budgets(
         float(platform_budget.current_spending),
         close_to(total_key_spend, 0.0001),
         "Platform budget current_spending should match the sum of both users' spending.",
+    )
+
+    logger.info("Waiting for both members' platform spend in the project")
+    members_spend = admin_budget_usage_utils.wait_for_members_project_spending_above(
+        [user1_id, user2_id], project_name, "platform", total_key_spend - 0.0001
+    )
+    assert_that(
+        members_spend,
+        not_none(),
+        "Member platform spend rows not found in the budget usage.",
+    )
+    assert_that(
+        members_spend,
+        close_to(total_key_spend, 0.0001),
+        "Sum of both members' platform spend should match the sum of both users' spending.",
     )

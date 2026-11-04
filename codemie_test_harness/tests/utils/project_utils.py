@@ -623,7 +623,6 @@ class ProjectUtils(BaseUtils):
         self.delete_project_budgets(project_name)
         self.delete_project_scoped_entities(project_name)
         self.delete_project(project_name)
-        pass
 
     def delete_matching_projects(
         self, name_predicate: Callable[[str], bool], search: Optional[str] = None

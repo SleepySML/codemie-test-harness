@@ -99,6 +99,11 @@ def user_budget_utils(user_client):
 
 
 @pytest.fixture(scope="function")
+def admin_budget_usage_utils(client):
+    return BudgetUtils(client)
+
+
+@pytest.fixture(scope="function")
 def user_proxy_utils(user_client):
     return ProxyUtils(user_client)
 

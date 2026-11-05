@@ -475,7 +475,7 @@ def user2_litellm_integration(
     )
     yield integration
     if integration:
-        user2_integration_utils.delete_integration(integration)
+        user2_integration_utils.delete_integration_if_exists(integration)
 
 
 @pytest.fixture(scope="function")

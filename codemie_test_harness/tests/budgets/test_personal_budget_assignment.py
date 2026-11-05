@@ -117,7 +117,7 @@ def test_admin_assigns_platform_budget_to_user(
 
     logger.info("Waiting for platform budget spend in ledger (user=%s)", email)
     assignment = admin_project_utils.wait_for_member_budget_spending_above(
-        DEFAULT_PLATFORM_BUDGET_ID, "platform", spend_after_assigned, user_id=user_id
+        DEFAULT_PLATFORM_BUDGET_ID, "platform", final_spend - 0.0001, user_id=user_id
     )
     assert_that(
         assignment, not_none(), "Platform budget assignment not found in spend ledger"

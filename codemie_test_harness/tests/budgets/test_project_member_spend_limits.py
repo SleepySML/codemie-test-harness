@@ -234,8 +234,8 @@ def test_member_customer_created_in_litellm_when_enforce_limits_disabled(
     logger.info(
         "Waiting for platform budget spend in ledger (project=%s)", project_name
     )
-    budget = admin_project_utils.wait_for_project_budget_spending(
-        project_name, "platform"
+    budget = admin_project_utils.wait_for_project_budget_spending_above(
+        project_name, "platform", float(customer.get("spend", 0)) - 0.0001
     )
     assert_that(budget, not_none(), "Project platform budget not found in spend ledger")
     assert_that(
@@ -322,8 +322,8 @@ def test_enabling_enforce_limits_resyncs_member_max_budget_to_individual(
     logger.info(
         "Waiting for platform budget spend in ledger (project=%s)", project_name
     )
-    budget = admin_project_utils.wait_for_project_budget_spending(
-        project_name, "platform"
+    budget = admin_project_utils.wait_for_project_budget_spending_above(
+        project_name, "platform", phase1_spend - 0.0001
     )
     assert_that(budget, not_none(), "Project platform budget not found in spend ledger")
     assert_that(
@@ -413,8 +413,8 @@ def test_disabling_enforce_limits_resyncs_member_max_budget_to_project_total(
     logger.info(
         "Waiting for platform budget spend in ledger (project=%s)", project_name
     )
-    budget = admin_project_utils.wait_for_project_budget_spending(
-        project_name, "platform"
+    budget = admin_project_utils.wait_for_project_budget_spending_above(
+        project_name, "platform", phase1_spend - 0.0001
     )
     assert_that(budget, not_none(), "Project platform budget not found in spend ledger")
     assert_that(

@@ -30,8 +30,10 @@ controls rather than something derivable from ``ModelTypes``:
     models and routes through the ``premium_models`` budget category.
 """
 
+import functools
 import logging
 from time import sleep
+from typing import Optional
 
 import pytest
 from hamcrest import (
@@ -62,9 +64,21 @@ logger = logging.getLogger(__name__)
 _PREMIUM_TEST = "test_premium_model_budget_routes_spending_from_personal"
 
 
-def _premium_flags() -> dict:
-    """Premium flag of every model the backend lists, read once while pytest collects."""
-    return {row.base_name: row.is_premium for row in get_client().llms.list()}
+@functools.cache
+def _premium_flags() -> Optional[dict]:
+    """Premium flag of every model the backend lists, read once per process while pytest collects.
+
+    None when the backend cannot be reached, so collecting (``--collect-only``, no credentials)
+    still works; the models are then collected for both tests.
+    """
+    try:
+        return {row.base_name: row.is_premium for row in get_client().llms.list()}
+    except Exception as error:
+        logger.warning(
+            "Premium flags unavailable while collecting, models are not split: %s",
+            error,
+        )
+        return None
 
 
 def pytest_generate_tests(metafunc):
@@ -80,11 +94,12 @@ def pytest_generate_tests(metafunc):
     if any(env in model_data.environments for model_data in models):
         premium = _premium_flags()
         wants_premium = metafunc.function.__name__ == _PREMIUM_TEST
-        models = [
-            model_data
-            for model_data in models
-            if bool(premium.get(model_data.model_type, False)) == wants_premium
-        ]
+        if premium is not None:
+            models = [
+                model_data
+                for model_data in models
+                if bool(premium.get(model_data.model_type, False)) == wants_premium
+            ]
     test_data = [
         pytest.param(
             model_data.model_type,

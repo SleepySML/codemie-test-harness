@@ -13,17 +13,24 @@
 # limitations under the License.
 
 import logging
-import time
 
 import requests
 
 from codemie_test_harness.tests import API_DOMAIN, VERIFY_SSL
-from codemie_test_harness.tests.utils.base_utils import BaseUtils
+from codemie_test_harness.tests.test_data.budget_usage_project_rows_test_data import (
+    CLI_ROW_SUFFIX,
+    PREMIUM_ROW_SUFFIX,
+)
+from codemie_test_harness.tests.utils.base_utils import BaseUtils, poll_until
 
 logger = logging.getLogger(__name__)
 
 _POLL_INTERVAL = 10
-_PROJECT_ROW_SUFFIX = {"platform": "", "cli": " (cli)", "premium_models": " (premium)"}
+_PROJECT_ROW_SUFFIX = {
+    "platform": "",
+    "cli": CLI_ROW_SUFFIX,
+    "premium_models": PREMIUM_ROW_SUFFIX,
+}
 
 
 class BudgetUtils(BaseUtils):
@@ -63,9 +70,8 @@ class BudgetUtils(BaseUtils):
         it returns the latest total (None if some user never had a row).
         """
         label = f"{project_name}{_PROJECT_ROW_SUFFIX[category]}"
-        deadline = time.monotonic() + timeout
-        latest = None
-        while time.monotonic() < deadline:
+
+        def read_total() -> float | None:
             figures = []
             for user_id in user_ids:
                 row = next(
@@ -77,16 +83,22 @@ class BudgetUtils(BaseUtils):
                     None,
                 )
                 figures.append(None if row is None else row.get("current_spending"))
-            if all(figure is not None for figure in figures):
-                latest = sum(figures)
-                if latest > threshold:
-                    return latest
-            time.sleep(_POLL_INTERVAL)
-        logger.warning(
-            "Members' spend in %r did not exceed %.6f within %ss — returning the latest total %s",
-            label,
-            threshold,
-            timeout,
-            latest,
+            if any(figure is None for figure in figures):
+                return None
+            return sum(figures)
+
+        total = poll_until(
+            read_total,
+            lambda value: value is not None and value > threshold,
+            timeout=timeout,
+            interval=_POLL_INTERVAL,
         )
-        return latest
+        if total is None or total <= threshold:
+            logger.warning(
+                "Members' spend in %r did not exceed %.6f within %ss — returning the latest total %s",
+                label,
+                threshold,
+                timeout,
+                total,
+            )
+        return total

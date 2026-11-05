@@ -60,8 +60,8 @@ def test_updating_budget_description_does_not_reset_spending(
     logger.info(
         "Waiting for platform budget spend in ledger (project=%s)", project_name
     )
-    budget = admin_project_utils.wait_for_project_budget_spending(
-        project_name, "platform"
+    budget = admin_project_utils.wait_for_project_budget_spending_above(
+        project_name, "platform", spend_before - 0.0001
     )
     assert_that(budget, not_none(), "Project platform budget not found in spend ledger")
     assert_that(
@@ -108,8 +108,8 @@ def test_updating_budget_name_does_not_reset_spending(
     logger.info(
         "Waiting for platform budget spend in ledger (project=%s)", project_name
     )
-    budget = admin_project_utils.wait_for_project_budget_spending(
-        project_name, "platform"
+    budget = admin_project_utils.wait_for_project_budget_spending_above(
+        project_name, "platform", spend_before - 0.0001
     )
     assert_that(budget, not_none(), "Project platform budget not found in spend ledger")
     assert_that(
@@ -156,8 +156,8 @@ def test_updating_budget_soft_limit_does_not_reset_spending(
     logger.info(
         "Waiting for platform budget spend in ledger (project=%s)", project_name
     )
-    budget = admin_project_utils.wait_for_project_budget_spending(
-        project_name, "platform"
+    budget = admin_project_utils.wait_for_project_budget_spending_above(
+        project_name, "platform", spend_before - 0.0001
     )
     assert_that(budget, not_none(), "Project platform budget not found in spend ledger")
     assert_that(
@@ -204,8 +204,8 @@ def test_updating_budget_hard_limit_does_not_reset_spending(
     logger.info(
         "Waiting for platform budget spend in ledger (project=%s)", project_name
     )
-    budget = admin_project_utils.wait_for_project_budget_spending(
-        project_name, "platform"
+    budget = admin_project_utils.wait_for_project_budget_spending_above(
+        project_name, "platform", spend_before - 0.0001
     )
     assert_that(budget, not_none(), "Project platform budget not found in spend ledger")
     assert_that(
@@ -252,8 +252,8 @@ def test_updating_budget_reset_period_does_not_reset_spending(
     logger.info(
         "Waiting for platform budget spend in ledger (project=%s)", project_name
     )
-    budget = admin_project_utils.wait_for_project_budget_spending(
-        project_name, "platform"
+    budget = admin_project_utils.wait_for_project_budget_spending_above(
+        project_name, "platform", spend_before - 0.0001
     )
     assert_that(budget, not_none(), "Project platform budget not found in spend ledger")
     assert_that(

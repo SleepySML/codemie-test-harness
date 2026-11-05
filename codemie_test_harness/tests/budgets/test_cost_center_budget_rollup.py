@@ -214,7 +214,7 @@ def test_rollup_reflects_project_budget_change_on_next_request(
 @pytest.mark.budget
 @pytest.mark.enterprise
 @pytest.mark.api
-def test_rollup_of_cost_center_without_linked_projects_returns_zero_totals(
+def test_rollup_of_cost_center_without_linked_projects_returns_no_totals(
     cost_center, cost_center_utils
 ):
     cc_id = cost_center()

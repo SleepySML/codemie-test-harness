@@ -101,6 +101,7 @@ from codemie_test_harness.tests.utils.budget_usage_steps import (
 from codemie_test_harness.tests.utils.budget_usage_utils import (
     BudgetUsageUtils,
     MemberProject,
+    wait_for_settled_key_spend,
 )
 from codemie_test_harness.tests.utils.proxy_utils import ProxyUtils
 
@@ -320,8 +321,11 @@ def test_get_budget_usage_project_spend_equals_admin_user_project_spending_enfor
         default_llm.base_name,
         enforced_project,
     )
-    admin_project_utils.wait_for_project_budget_spending(
-        enforced_project.name, "platform"
+    project_total = wait_for_settled_key_spend(
+        lite_llm_budget_utils, enforced_project.budget.alias("platform")
+    )
+    admin_project_utils.wait_for_project_budget_spending_above(
+        enforced_project.name, "platform", project_total - 0.0001
     )
     wait_for_admin_row_with_visible_spend(admin_usage, enforced_project)
     member_row = wait_for_member_project_row_with_spend(member_usage, enforced_project)

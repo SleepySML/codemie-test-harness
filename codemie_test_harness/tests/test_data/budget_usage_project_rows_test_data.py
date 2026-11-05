@@ -26,6 +26,13 @@ BUDGET_USAGE_ROW_KEYS = {
     "is_default",
 }
 
+# Spend annotations the backend adds to a row when the ledger figure is partial or unavailable.
+BUDGET_USAGE_SPEND_ANNOTATION_KEYS = {
+    "spend_partial",
+    "spend_unavailable",
+    "spend_missing_amount",
+}
+
 # Column ids of GET /v1/analytics/budget_usage, in response order.
 BUDGET_USAGE_COLUMN_IDS = [
     "project_name",
@@ -53,6 +60,13 @@ USER_PROJECT_SPENDING_ROW_KEYS = {
     "platform_limit",
     "cli_limit",
     "premium_models_limit",
+}
+
+# The same spend annotations, one set per budget category.
+USER_PROJECT_SPENDING_SPEND_ANNOTATION_KEYS = {
+    f"{category}_{annotation}"
+    for category in ("platform", "cli", "premium_models")
+    for annotation in ("spend_partial", "spend_unavailable", "spend_missing_amount")
 }
 
 # Suffixes of the row label per budget category (the platform row carries the bare label).

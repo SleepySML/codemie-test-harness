@@ -96,11 +96,6 @@ def test_project_member_spending_follows_budget_and_membership_lifecycle(
         project_spend_after_phase2 = float(project_key_info["spend"])
         current_personal = lite_llm_budget_utils.get_customer_info(user2_email)
 
-        # if spend collect will be triggered after user unassignment, DB will not contain record
-        # with spend_subject_type as member_budget only project_budget. By default,
-        # admin_spend_tracking_utils.wait_for_project_spends returns records excluding project_budget,
-        # to not duplicate total spends.
-
         logger.info(
             "Waiting for platform budget spend in ledger (project=%s)", project_name
         )
@@ -238,7 +233,7 @@ def test_cli_spending_reverts_to_personal_after_project_unassignment(
     project_spend_before_unassign = float(project_key_info["spend"])
 
     # Regression: User 2 is removed here with spend still uncollected
-    # (no collect_spends() call before removal). The flush-before-delete fix must
+    # (the test does not wait for it to reach the ledger before removal). The flush-before-delete fix must
     # capture this member's terminal spend as a member_budget row inline during
     # removal, otherwise the nightly collector's later join would silently lose it
     # once the allocation is soft-deleted.
@@ -341,10 +336,6 @@ def test_premium_spending_reverts_to_personal_after_project_unassignment(
     assert_that(float(project_key_info["spend"]), greater_than(0))
     project_spend_before_unassign = float(project_key_info["spend"])
 
-    # if spend collect will be triggered after user unassignment, DB will not contain record
-    # with spend_subject_type as member_budget only project_budget. By default,
-    # admin_spend_tracking_utils.wait_for_project_spends returns records excluding project_budget,
-    # to not duplicate total spends.
     logger.info(
         "Waiting for premium_models budget spend in ledger (project=%s)", project_name
     )

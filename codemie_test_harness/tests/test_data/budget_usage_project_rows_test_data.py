@@ -120,13 +120,10 @@ KEY_SPEND_SETTLE_TIMEOUT = 120.0
 # staleness window, so spend is settled before that first read and polled only for propagation.
 USAGE_WAIT_TIMEOUT = 120.0
 
-# The spend is collected on request right after it settles (the admin collect endpoint runs the
-# collection the system runs every 10 minutes), which stores fresh rows that the page then serves.
-# collect_spends gives up quietly after COLLECT_RETRY_WINDOW seconds of 409 (another collection is
-# running), and that other collection covers the pending spend, so a row can still need that long
-# plus propagation to show it. The wait for a row to catch up with the measured spend is only a
-# safety net behind the collection: it covers one such window plus a margin of the same size, not
-# the 10 minute staleness threshold (BUDGET_USAGE_STALENESS_THRESHOLD_MS, 600000 ms by default).
-COLLECT_RETRY_WINDOW = 120.0
-STORED_ROW_WAIT_TIMEOUT = COLLECT_RETRY_WINDOW * 2
+# A row catches up with the measured spend only after the ledger has collected it, which a
+# periodic job does about every one or two minutes. The wait for a row to catch up covers
+# one such window plus a margin of the same size, not the 10 minute staleness threshold
+# (BUDGET_USAGE_STALENESS_THRESHOLD_MS, 600000 ms by default).
+ROW_CATCH_UP_WINDOW = 120.0
+STORED_ROW_WAIT_TIMEOUT = ROW_CATCH_UP_WINDOW * 2
 STORED_ROW_POLL_INTERVAL = 10.0

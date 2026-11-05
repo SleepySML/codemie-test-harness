@@ -26,7 +26,6 @@ own spend, and its total is the whole project's spend against the project hard l
 override then caps the limit by what is left of the project budget.
 """
 
-import datetime
 import logging
 import secrets
 
@@ -312,7 +311,7 @@ def test_get_budget_usage_project_spend_equals_admin_user_project_spending_enfor
     lite_llm_budget_utils,
     member_usage,
     admin_usage,
-    admin_spend_tracking_utils,
+    admin_project_utils,
 ):
     """Enforcement-on rows share spend and total with the admin Users-list table."""
     generate_member_spend_visible_at_two_decimals(
@@ -321,10 +320,8 @@ def test_get_budget_usage_project_spend_equals_admin_user_project_spending_enfor
         default_llm.base_name,
         enforced_project,
     )
-    admin_spend_tracking_utils.collect_spends()
-    today = datetime.date.today()
-    admin_spend_tracking_utils.wait_for_project_spends(
-        enforced_project.name, today, today, "platform"
+    admin_project_utils.wait_for_project_budget_spending(
+        enforced_project.name, "platform"
     )
     wait_for_admin_row_with_visible_spend(admin_usage, enforced_project)
     member_row = wait_for_member_project_row_with_spend(member_usage, enforced_project)
@@ -546,7 +543,7 @@ def test_get_budget_usage_two_members_real_spend_total_follows_enforcement_mode(
     admin_project_budget_utils,
     owner_usage,
     member_usage,
-    admin_spend_tracking_utils,
+    admin_project_utils,
 ):
     scenario = create_two_member_scenario(
         member_project_factory,
@@ -566,10 +563,8 @@ def test_get_budget_usage_two_members_real_spend_total_follows_enforcement_mode(
     generate_distinct_spend_for_owner_and_member(
         scenario, user1_proxy_utils, user2_proxy_utils, default_llm
     )
-    admin_spend_tracking_utils.collect_spends()
-    today = datetime.date.today()
-    admin_spend_tracking_utils.wait_for_project_spends(
-        scenario.project.name, today, today, "platform"
+    admin_project_utils.wait_for_project_budget_spending_above(
+        scenario.project.name, "platform", scenario.project_total - 0.0001
     )
     assert_both_spent_and_the_member_spent_visibly_more(scenario)
 
@@ -599,7 +594,7 @@ def test_get_budget_usage_three_members_override_and_real_spend_total_by_mode(
     admin_project_budget_utils,
     owner_usage,
     member_usage,
-    admin_spend_tracking_utils,
+    admin_project_utils,
 ):
     scenario = create_three_member_scenario(
         member_project_factory,
@@ -619,10 +614,8 @@ def test_get_budget_usage_three_members_override_and_real_spend_total_by_mode(
     generate_spend_for_owner_and_member(
         scenario, user1_proxy_utils, user2_proxy_utils, default_llm
     )
-    admin_spend_tracking_utils.collect_spends()
-    today = datetime.date.today()
-    admin_spend_tracking_utils.wait_for_project_spends(
-        scenario.project.name, today, today, "platform"
+    admin_project_utils.wait_for_project_budget_spending_above(
+        scenario.project.name, "platform", scenario.project_total - 0.0001
     )
     assert_both_spent_and_the_project_total_includes_both(scenario)
 
@@ -649,7 +642,7 @@ def test_get_budget_usage_override_is_capped_by_remaining_project_budget_when_no
     owner_usage,
     member_usage,
     user1_project_utils,
-    admin_spend_tracking_utils,
+    admin_project_utils,
 ):
     scenario = create_two_member_scenario(
         member_project_factory,
@@ -667,10 +660,8 @@ def test_get_budget_usage_override_is_capped_by_remaining_project_budget_when_no
 
     # Only the owner spends; nothing is read from the page before it is settled and collected.
     generate_spend_for_owner(scenario, user1_proxy_utils, default_llm)
-    admin_spend_tracking_utils.collect_spends()
-    today = datetime.date.today()
-    admin_spend_tracking_utils.wait_for_project_spends(
-        scenario.project.name, today, today, "platform"
+    admin_project_utils.wait_for_project_budget_spending_above(
+        scenario.project.name, "platform", scenario.project_total - 0.0001
     )
     assert_owner_spent_and_the_project_total_is_visible(scenario)
     assert_cap_is_visibly_below_the_override(scenario)

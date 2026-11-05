@@ -66,7 +66,7 @@ a dedicated non-parallel pass.
 
 ## Code rules
 
-- **SDK first.** Every CodeMie API call in a test or fixture goes through `client.<service>` or a `*_utils` wrapper. The tests import the published `codemie-sdk-python`, pinned in `pyproject.toml`; the SDK is developed in its own public repository, recorded as the `sdk` entry in `config.json` (`code_repos`, change policy `extend`). If the SDK lacks the call, add it there — new code only, following that repository's contributing guide and its checks — never in a copy inside this monorepo. `from requests import HTTPError` is the normal way to assert an error the SDK raises — that import is fine. Known raw-HTTP exceptions: `conversations/test_conversation_feedback.py` (SDK gap for `/v1/feedback`) and `assistant/tools/ado/test_assistant_for_ado_work_item_tools.py` (verifies state in Azure DevOps itself, not CodeMie).
+- **SDK first.** Every CodeMie API call in a test or fixture goes through `client.<service>` or a `*_utils` wrapper. The tests import the published `codemie-sdk-python`, pinned in `pyproject.toml`; the SDK is developed in its own public repository, recorded as the `sdk` entry in `config.json` (`code_repos`, change policy `extend`). If the SDK lacks the call, add it there — new code only, following that repository's contributing guide and its checks — never in a copy inside this repository. `from requests import HTTPError` is the normal way to assert an error the SDK raises — that import is fine. Known raw-HTTP exceptions: `conversations/test_conversation_feedback.py` (SDK gap for `/v1/feedback`) and `assistant/tools/ado/test_assistant_for_ado_work_item_tools.py` (verifies state in Azure DevOps itself, not CodeMie).
 - **Credentials** come from `CredentialsManager.get_parameter("KEY")`, never `os.getenv()`. Some older datasource and UI workflow tests still read values with `os.getenv()`; don't copy that. `EnvironmentResolver` (`tests/utils/env_resolver.py`) derives the current environment from `CODEMIE_API_DOMAIN`.
 - **No mocking library** in tests — they run against a deployed stand.
 - **Every `.py` file carries the Apache-2.0 licence header** from `scripts/license_template.txt`; a new file needs it (`make license-fix` inserts it).
@@ -92,8 +92,7 @@ A few legacy tests still contain some of these (`wait_for_timeout`, `pytest.fail
 
 ## Project conventions
 
-- `test-harness/AGENTS.md` is this repository's AI entrypoint; the monorepo-root `AGENTS.md` points here for test-harness guidance.
-- Lint and format through `ruff` (`Makefile`): `poetry run ruff check --fix`, `poetry run ruff check`, `poetry run ruff format`. Check-only forms: `poetry run ruff check`, `poetry run ruff format --check`.
-- Other `Makefile` targets: `make license-check` / `make license-fix` (licence headers), `make license-scan` (dependency licences), `make scan-internal` (internal values), `make install-hooks` (pre-commit hook for lint, format and the internal-value scan). The scan scripts are invoked as `python3`; where only `python` exists, run them with that.
+- `AGENTS.md` is this repository's AI entrypoint.
+- Lint, format, licence, scan and hook commands: see [quality-gates.md](../quality-gates.md).
 - UI tests need Playwright browsers (`playwright install`). Most suites need AWS credentials to load integration settings from Parameter Store; `sanity` is the one suite that needs none (README).
 - To run the tests against an unreleased SDK change, install the SDK clone on top of the Poetry environment (`consume.local` of the `sdk` entry in `config.json`); `make install` returns to the pinned release. The tests then follow whatever branch that clone has checked out.

@@ -35,7 +35,7 @@ a dedicated non-parallel pass.
 - **Run one test:** `poetry run pytest -v <test-file> --ui-headless`
 - **Run suite:** `poetry run pytest -n 4 -m ui --reruns 2 --ui-headless`
 
-`--ui-headless` is required explicitly — the pytest.ini line that would make it the default is commented out.
+`--ui-headless` is required explicitly: without it the browser runs headed (`tests/ui/conftest.py`, `browser_type_launch_args` fixture).
 
 ## Suite inventory
 
@@ -43,7 +43,7 @@ a dedicated non-parallel pass.
 |---|---|---|
 | `api` | `codemie_test_harness/tests/` (all areas except `ui/`) | API / integration tests against a deployed stand |
 | `ui` | `codemie_test_harness/tests/ui/` | Playwright UI tests |
-| `sanity` | marker, across areas | assistants / workflows / datasources without integrations; the only suite that needs no AWS credentials |
+| `sanity` | marker, across areas | assistants / workflows / datasources without integrations; the only suite that needs no integration settings |
 | `smoke` | marker, across areas | quick checks for local development |
 | `enterprise` | marker, across areas | enterprise-only features |
 | `prod_regression` | marker, `ui` only | UI tests safe to run on PROD with a regular user or admin (not a maintainer); run with `-m "ui and prod_regression"`. Never on `budget`, `cli_analytics`, `auditor` or `aice` tests |
@@ -53,7 +53,7 @@ a dedicated non-parallel pass.
 
 - Every test carries exactly one of `@pytest.mark.api` or `@pytest.mark.ui` — never both. A test with neither is selected by no suite.
 - Stated stack order for new tests: scope (`smoke`, `sanity`) → feature → `api`/`ui` last, directly above `def`. Older tests vary (`timeout` or `parametrize` sometimes sit last); don't reorder existing tests just for this.
-- **No ticket references in new tests.** Do not add `@pytest.mark.testcase(...)`, and do not put a ticket key anywhere in test code, names, comments, docstrings or test data. The factory's `# @case <case ID>` traceability comment stays: its ID is ticket-free (`<slug>_TC_001`). Some existing tests still carry the old marker or ticket-keyed `@case` IDs; leave them, and do not copy the form.
+- **No ticket references in new tests.** Do not add `@pytest.mark.testcase(...)`, and do not put a ticket key anywhere in test code, names, comments, docstrings or test data. The factory's `# @case <case ID>` traceability comment stays: its ID is ticket-free (`<slug>_TC_001`).
 - `@pytest.mark.not_for_parallel_run` on any test that mutates state other tests share.
 
 ## Execution traps
@@ -94,5 +94,5 @@ A few legacy tests still contain some of these (`wait_for_timeout`, `pytest.fail
 
 - `AGENTS.md` is this repository's AI entrypoint.
 - Lint, format, licence, scan and hook commands: see [quality-gates.md](../quality-gates.md).
-- UI tests need Playwright browsers (`playwright install`). Most suites need AWS credentials to load integration settings from Parameter Store; `sanity` is the one suite that needs none (README).
+- UI tests need Playwright browsers (`playwright install`). The full suites (`smoke`, `api`, `ui`) contain integration tests that need their own settings; the `sanity-*` suites need none (`README.md`, "Settings").
 - To run the tests against an unreleased SDK change, install the SDK clone on top of the Poetry environment (`consume.local` of the `sdk` entry in `config.json`); `make install` returns to the pinned release. The tests then follow whatever branch that clone has checked out.

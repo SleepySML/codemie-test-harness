@@ -8,8 +8,6 @@
 | Repository/package | codemie-ai/codemie-test-harness; PyPI package `codemie-test-harness` | `CONTRIBUTING.md`, `pyproject.toml` |
 | Project code/key | `EPMCDME-NNNNN` (placeholder form) | user decision |
 
-The harness runs API and UI suites against a deployed CodeMie installation. Test strategy, environments and risk model are in `testing/` ([strategy](testing/strategy.md), [environments](testing/environments.md), [risk model](testing/risk-model.md)).
-
 ## Machine-readable twin
 
 [testing/config.json](testing/config.json) holds the same facts for tools: disciplines, adapters, `git_conventions`, `test_command_templates` and `code_repos`. The `sdk` entry describes the public SDK repository. Its `local_path` is the directory name of a clone of that repository next to this one, and its `setup` and `verify` commands run from the root of that clone. The `consume.*` commands run from this repository. `test_command_templates` is a known copy of the commands in `testing/strategy.md`; the strategy file is the home.
@@ -47,11 +45,7 @@ The repository is public. Never write a real ticket key, a tracker host or a per
 
 **Status**: configured
 **Adapter**: `gh` CLI
-**Instructions**: Use `gh pr create --repo codemie-ai/<repo> --base main`. Read `gh pr view` and `gh pr checks` for status. Load `git-workflow.md` for the title format and the rule on ticket keys.
-
-## Decisions
-
-- Task folders under `docs/superpowers/tasks/` are ignored whole, so no separate `*.local.*` rule exists in `.gitignore`.
+**Instructions**: Use `gh pr create --repo codemie-ai/codemie-test-harness --base main`. Read `gh pr view` and `gh pr checks` for status. Load `standards/git-workflow.md` for the title format and the rule on ticket keys.
 
 ## Complexity Scoring
 
